@@ -1,0 +1,9 @@
+*
+!*.py
+!.gitignore
+!readme.md
+!.gitkeep
+!*/
+
+/runs/
+
