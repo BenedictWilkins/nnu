@@ -29,6 +29,9 @@ class LayerDict(OrderedDict):
             self.module.add_module(k, v)
         else:
             self.__dict__[k] = v
+
+    def append(self, x):
+        self[str(len(self))] = x
             
 class Sequential(nn.Module):
 
@@ -68,4 +71,8 @@ class Sequential(nn.Module):
             if isinstance(v, nn.Module):
                 input_shape = result[k] = shape(v, input_shape)
         return result
+
+    def output_shape(self, input_shape):
+        return list(self.shape(input_shape).values())[-1]
+
 
