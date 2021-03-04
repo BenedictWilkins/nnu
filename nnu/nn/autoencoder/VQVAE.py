@@ -15,6 +15,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+# https://github.com/rosinality/vq-vae-2-pytorch
+
 # Copyright 2018 The Sonnet Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,8 +31,6 @@ from torch.nn import functional as F
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
-
 # Borrowed from https://github.com/deepmind/sonnet and ported it to PyTorch
 
 

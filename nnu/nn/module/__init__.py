@@ -57,6 +57,26 @@ class View(nn.Module):
     def inverse(self, **kwargs):
         return View(self.output_shape, self.input_shape)
 
+class Cat(nn.Module): # TODO
+
+    def __init__(self, *shapes, dim=0):
+        self.dim = dim
+        self.input_shape = tuple(shapes) # TODO validate shapes...
+
+        self.output_shape = list(shapes[0])
+        self.output_shape[dim] = np.array(self.input_shape)[self.dim].sum()        
+        self.output_shape = tuple(self.output_shape)
+
+    def forward(self, *x):
+        return torch.cat(x, dim=self.dim + 1)
+
+    def shape(self, *args, **kwargs):
+        # check that the input shape provided is valid?
+        return self.output_shape
+
+    def inverse(self, *args, **kwargs):
+        raise NotImplementedError("TODO")
+
 def view(input_shape, output_shape):
     return View(input_shape, output_shape)
 

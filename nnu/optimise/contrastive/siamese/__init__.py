@@ -1,10 +1,13 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Created on Mon Sep  9 15:26:27 2019
+ Created on 17-02-2021 14:45:05
 
-@author: ben
+ [Description]
 """
+__author__ ="Benedict Wilkins"
+__email__ = "benrjw@gmail.com"
+__status__ ="Development"
 
 import torch
 import torch.nn
@@ -13,15 +16,13 @@ import numpy as np
 
 from collections import namedtuple
 
-import pyworld.toolkit.tools.datautils as du
-import pyworld.toolkit.tools.torchutils as tu
+from .loss import *
 
-from pyworld.toolkit.tools.datautils.accumulate import CMA #TODO remove
-
-from ..base import TorchOptimiser
-    
 #TODO most of the self.loss computation of each optimiser should be moved into self.step
 
+#### OPTIMISERS ARE DEPRECATED, USE THE loss.py instead!
+
+"""
 mode = namedtuple('mode', 'all top top_n, top_p')(0,1,2,3)  #enum?
 
 class TripletOptimiser(TorchOptimiser):
@@ -33,15 +34,10 @@ class TripletOptimiser(TorchOptimiser):
         self.k = int(k) #should be related to the batch size or number of p/n examples expected
         
         self.optim = torch.optim.Adam(self.model.parameters(), lr=lr)
-        self.cma = CMA('loss')
         self.margin = margin
     
     def step(self, x, y):
-        #self.optim.zero_grad()
         loss = self.loss(x, y.squeeze(), *self.__top[self.mode])
-        self.cma.push(loss.item())
-        #loss.backward()
-        #self.optim.step()
         return loss
         
     def loss(self, x, y, topk_n = False, topk_p = False):
@@ -112,11 +108,8 @@ class PairTripletOptimiser(TripletOptimiser):
             Step with pairs of input. ``(x1_i, x2_i)`` are a pair - share the same label
             (x1_i, x2_{j\neq i}) are considered to have different labels (i.e. are not a pair).
         '''
-        #self.optim.zero_grad()
+  
         loss = self.loss(x1, x2, *self._TripletOptimiser__top[self.mode])
-        self.cma.push(loss.item())
-        #loss.backward()
-        #self.optim.step()
         return loss
     
     def loss(self, x1, x2, topk_n = False, topk_p = False):
@@ -128,18 +121,11 @@ class PairTripletOptimiser(TripletOptimiser):
         xp = torch.diag(d).unsqueeze(1)
         xn = d # careful with the diagonal?
 
-        #if topk_n and self.k < xn.shape[0]:
-        #    #remove xp - xn = 0, along  
-        #    xn[range(d.shape[0]), range(d.shape[1])] = float('inf') #hopefully this doesnt mess up autograd...
-        #    xn = self.topk2(d, self.k, large=False) #select the k best negative values for each anchor [batch_size x k]
-
         # is doesnt matter if xp is included in xn as xp_i - xn_i = 0, the original inequality is satisfied, the loss will be 0.
         # it may be more expensive to remove these values than to just compute as below.
         xf = xp.unsqueeze(2) - xn #should only consist of only ||A - P|| - ||A - N|| [batch_size x batch_size x k]
         
-        #else: this is probably not needed...?
-            #xf[:,range(d.shape[0]), range(d.shape[1])] = 0. #remove all ||A-P|| - ||A-P|| #todo
-            
+
         xf = F.relu(xf + self.margin)
         return xf.sum()
 
@@ -373,3 +359,4 @@ if __name__ == "__main__":
     #tro.step(x1, x2)
     
 
+"""

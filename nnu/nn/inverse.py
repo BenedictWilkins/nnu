@@ -9,14 +9,19 @@ __author__ = "Benedict Wilkins"
 __email__ = "benrjw@gmail.com"
 __status__ = "Development"
 
+import logging
+logger = logging.getLogger("nnu_logger")
+logger.setLevel(logging.WARNING)
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from . import module
+from . import shape as _shape
 
-def conv2d_transpose(layer, share_weights=False, **kwargs):
+def conv2d_transpose(layer, share_weights=False, shape=None, **kwargs):
     """ Transpose 2D convolutional layer (see torch.nn.ConvTranspose2d).
 
     Args:
@@ -26,10 +31,22 @@ def conv2d_transpose(layer, share_weights=False, **kwargs):
     Returns:
         torch.nn.ConvTranspose2d: inverse layer.
     """
+    
+    
     convt2d = nn.ConvTranspose2d(layer.out_channels, layer.in_channels, 
                        kernel_size=layer.kernel_size, 
                        stride=layer.stride, 
                        padding=layer.padding)
+
+    if shape is not None:
+        c_shape = _shape.conv2d_shape(layer, shape)
+        ct_shape = _shape.conv2dtranspose_shape(convt2d, c_shape)
+        dh, dw = shape[1] - ct_shape[1], shape[2] - ct_shape[2]
+        #print(convt2d.output_padding, dh, dw)
+        convt2d.output_padding = (dh, dw)
+    else:
+        logger.log("Ambiguous inverse of Conv2d layer without shape argument.")
+    
     if share_weights:
         convt2d.weight = layer.weight
     return convt2d

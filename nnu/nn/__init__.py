@@ -11,9 +11,9 @@ __status__ ="Development"
 
 from . import CNet
 from . import autoencoder
-from . import Sequential
 from . import module
 
 from .module import *
+from .Sequential import Sequential
 
-__all__ = ('CNet', "Sequential", "autoencoder", "module")
+__all__ = ('CNet', "autoencoder", "module")

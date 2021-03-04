@@ -7,6 +7,6 @@ Created on Fri Jun 14 11:22:46 2019
 """
 
 from .base import *
-from . import siamese
+from . import contrastive
 
-__all__ = ("siamese",)
+__all__ = ("contrastive",)

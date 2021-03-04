@@ -52,11 +52,17 @@ class Sequential(nn.Module):
             y = layer(y)
         return y
 
-    def inverse(self, **kwargs):
+    def inverse(self, input_shape=None, **kwargs):
         ilayers = OrderedDict()
-        for k,v in reversed(self.layers.items()):
+
+        # the output shape of a layer is sometimes needed to compute an unambigous inverse transform (e.g. for conv2dtranspose)
+        if input_shape is not None:
+            shape = [input_shape, *self.shape(input_shape).values()][:-1]
+        else:
+            shape = [None] * len(self.layers.items())
+        for (k,v), s in zip(reversed(self.layers.items()), reversed(shape)):
             if isinstance(v, nn.Module):
-                v = inverse(v, **kwargs)[0]
+                v = inverse(v, shape=s, **kwargs)[0]
             ilayers[k] = v
         return Sequential(**ilayers).to(self.device)
         
