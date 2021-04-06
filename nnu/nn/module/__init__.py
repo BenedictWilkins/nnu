@@ -15,6 +15,8 @@ import torch.nn as nn
 
 from .. import shape
 
+from .sample import *
+
 class View(nn.Module):
     """
         A view of a tensor. Can be used in a network to reshape output/inputs.
@@ -57,33 +59,13 @@ class View(nn.Module):
     def inverse(self, **kwargs):
         return View(self.output_shape, self.input_shape)
 
-class Cat(nn.Module): # TODO
-
-    def __init__(self, *shapes, dim=0):
-        self.dim = dim
-        self.input_shape = tuple(shapes) # TODO validate shapes...
-
-        self.output_shape = list(shapes[0])
-        self.output_shape[dim] = np.array(self.input_shape)[self.dim].sum()        
-        self.output_shape = tuple(self.output_shape)
-
-    def forward(self, *x):
-        return torch.cat(x, dim=self.dim + 1)
-
-    def shape(self, *args, **kwargs):
-        # check that the input shape provided is valid?
-        return self.output_shape
-
-    def inverse(self, *args, **kwargs):
-        raise NotImplementedError("TODO")
-
-def view(input_shape, output_shape):
-    return View(input_shape, output_shape)
-
 class ResBlock2D(nn.Module):
 
     def __init__(self, in_channel, channel):
         super(ResBlock2D, self).__init__()
+        self.in_channel = in_channel
+        self.channel = channel
+
         self.c1 = nn.Conv2d(in_channel, channel, 3, 1, 1)
         self.r1 = nn.ReLU(inplace=True)
         self.c2 = nn.Conv2d(channel, in_channel, 1)
@@ -97,5 +79,12 @@ class ResBlock2D(nn.Module):
         return input_shape # resnet blocks are the same input/output shape!
 
     def inverse(self, *args, share_weights=False, **kwargs):
-        return ResBlock2D(self.c1.in_channel, self.c1.out_channel)
+        return ResBlock2D(self.in_channel, self.channel) # identity inverse...
 
+class NormaliseLogits(nn.Module):
+    
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, logits):
+        return logits - logits.logsumexp(dim=-1, keepdim=True)

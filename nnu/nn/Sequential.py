@@ -37,12 +37,15 @@ class Sequential(nn.Module):
 
     def __init__(self, *layers, **layer_dict):
         super(Sequential, self).__init__()
+        if len(layer_dict) == 0:
+            layer_dict = {}
 
         if len(layers) > 0:
             _layer_dict = {str(i):v for i,v in enumerate(layers)}
             _layer_dict.update(layer_dict)
             layer_dict = _layer_dict
 
+    
         self.layers = LayerDict(self, layer_dict)
 
     def forward(self, *args, **kwargs):

@@ -15,5 +15,6 @@ from . import module
 
 from .module import *
 from .Sequential import Sequential
+from .loss import *
 
 __all__ = ('CNet', "autoencoder", "module")

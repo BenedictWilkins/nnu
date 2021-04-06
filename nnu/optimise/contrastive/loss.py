@@ -78,7 +78,3 @@ class TripletLoss:
             loss += xf.sum()
 
         return loss
-
-
-
-

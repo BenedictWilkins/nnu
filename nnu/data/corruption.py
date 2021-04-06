@@ -42,11 +42,3 @@ class SaltPepper:
         x[n >=  1 - self.p/2] = 1.
         x[n <= self.p/2] = 0.
         return x
-
-    #def apply(self, x, mu=0., sigma=1.):
-        #n = torch.zeros_like(x, device=x.device)
-        #i = torch.randperm(x.shape[0])[:int(self.gamma * x.shape[0])]
-        #n[i] = torch.empty(i.shape[0], *x.shape[1:], device=x.device).data.normal_(self.mu, std=self.std)
-        
-        
-
