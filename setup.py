@@ -16,6 +16,6 @@ setup(name='nnu',
       author_email='benrjw@gmail.com',
       packages=find_packages(),
       install_requires=["numpy",
-                        "torch>=1.8.1"],
+                        "torch==1.7.1"],
       dependency_links = ["https://download.pytorch.org/whl/torch_stable.html"],
       zip_safe=False)
