@@ -34,8 +34,8 @@ class CategoricalStraightThrough(nn.Module): # Straight through gradients
 
         super().__init__()
         self.latent_shape = latent_shape = as_shape(latent_shape)
-        self.normalise = False
-        self.epsilon = min(0, max(epsilon, 1))
+        self.normalise = normalise
+        self.epsilon = max(0, min(epsilon, 1))
 
         if not onehot:
             self.embed = nn.Embedding(latent_shape[0], latent_shape[0])
@@ -51,11 +51,13 @@ class CategoricalStraightThrough(nn.Module): # Straight through gradients
         
         if self.normalise: 
             logits = logits - logits.logsumexp(dim=-1, keepdim=True) # normalise logits
+            logits = torch.clamp(logits, -10, 0) # logprob -10 is ~ 0 prob, can explode without this
 
         probs = torch.softmax(logits, dim=1) 
 
-        # shape the distribution - this can prevent the distribution from collapsing if the proper regularisation is not in place
+        # ??? shape the distribution - this can prevent the distribution from collapsing if the proper regularisation is not in place
         qprobs = probs - (probs * self.epsilon) + (self.epsilon / self.latent_shape[-1])
+        #qprobs = probs
 
         sample = torch.multinomial(qprobs, 1, replacement=True)
         sample = self.embed(sample).view(probs.shape)

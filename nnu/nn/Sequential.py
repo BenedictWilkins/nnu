@@ -52,10 +52,17 @@ class Sequential(nn.Module):
         liter = iter(self.layers.values())
         y = next(liter)(*args, **kwargs)
         for layer in liter:
+            #print(layer)
             y = layer(y)
         return y
 
     def inverse(self, input_shape=None, **kwargs):
+        if input_shape is None:
+            try:
+                input_shape = self.input_shape
+            except:
+                pass # guess it'll be ambiguous!
+
         ilayers = OrderedDict()
 
         # the output shape of a layer is sometimes needed to compute an unambigous inverse transform (e.g. for conv2dtranspose)

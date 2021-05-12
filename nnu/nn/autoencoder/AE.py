@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ..shape import conv2d_shape
+from ..shape import Conv2d
 from ..inverse import inverse
 
 class AE(nn.Module):

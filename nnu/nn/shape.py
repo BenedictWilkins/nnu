@@ -18,7 +18,10 @@ def as_shape(shape):
     else:
         return tuple(shape)
 
-def conv2d_shape(layer, input_shape, *args, **kwargs):
+def MaxPool2d(layer, input_shape, *args, **kwargs):
+    return Conv2d(layer, input_shape, *args, **kwargs)
+
+def Conv2d(layer, input_shape, *args, **kwargs):
     """ 
         Get the output shape of a 2D convolution given the input_shape.
         
@@ -49,7 +52,7 @@ def conv2d_shape(layer, input_shape, *args, **kwargs):
         return input_shape[-3], h, w # CHW
     return layer.out_channels, h, w
 
-def conv2dtranspose_shape(layer, input_shape, *args, **kwargs):
+def ConvTranspose2d(layer, input_shape, *args, **kwargs):
     input_shape = as_shape(input_shape)
     h,w = input_shape[-2:]
     pad, dilation, kernel_size, stride, output_pad = layer.padding, layer.dilation, layer.kernel_size, layer.stride, layer.output_padding
@@ -69,41 +72,67 @@ def conv2dtranspose_shape(layer, input_shape, *args, **kwargs):
 
     return layer.out_channels, h, w
 
-def linear_shape(layer, *args, **kwargs):
-    """ Get the output shape of a linear layer.
-
-    Args:
-        layer (nn.Linear): linear layer.
-
-    Returns:
-        tuple: output shape (D,)
-    """
+def Linear(layer, *args, **kwargs):
     return (layer.weight.shape[0],)
 
 def identity(layer, input_shape, *args, **kwargs):
     return input_shape
 
-shape_map = {nn.Linear:linear_shape,
-             nn.Conv2d:conv2d_shape,
-             nn.MaxPool2d:conv2d_shape, # is the same as conv2d
-             nn.ConvTranspose2d:conv2dtranspose_shape,
-             nn.Identity:identity, 
+def Sequential(sequential, input_shape, *args, **kwargs):
+    #assert isinstance(sequential, nn.Sequential)
+    modules = list(sequential.children())
+    shapes = []
+    _shape = input_shape
+    for module in modules:
+        _shape = shape(module, _shape)
+        shapes.append(_shape)
+        if isinstance(module, nn.Sequential):
+            raise NotImplementedError("TODO if nested there are issues (see _shape)")
+    return shapes
 
-             # activation functions
-             nn.LeakyReLU:identity,
-             nn.ReLU:identity,
-             nn.Sigmoid:identity,
-             nn.Tanh:identity,
-             
-             
-             # custom nn.Modules
-             
-             }
+def AdaptiveAvgPool1d(layer, input_shape, *args, **kwargs):
+    raise NotImplementedError()
 
-def shape(layer, *args, **kwargs):
+def AdaptiveAvgPool2d(layer, input_shape, *args, **kwargs):
+    output_shape = list(input_shape)
+    output_shape[-2:] = layer.output_size
+    return tuple(output_shape)
+
+def AdaptiveAvgPool3d(layer, input_shape, *args, **kwargs):
+    raise NotImplementedError()
+
+shape_map = {
+            nn.Sequential: Sequential,
+
+            nn.AdaptiveAvgPool1d: AdaptiveAvgPool1d,
+            nn.AdaptiveAvgPool2d: AdaptiveAvgPool2d,
+            nn.AdaptiveAvgPool3d: AdaptiveAvgPool3d,
+
+            nn.Linear: Linear,
+            nn.Conv2d: Conv2d,
+            nn.MaxPool2d: MaxPool2d, 
+            nn.ConvTranspose2d: ConvTranspose2d,
+
+            nn.Identity: identity, 
+            nn.Dropout: identity,
+            # activation functions
+            nn.LeakyReLU: identity,
+            nn.ReLU: identity,
+            nn.Sigmoid: identity,
+            nn.Tanh: identity,
+
+            nn.BatchNorm1d: identity,
+            nn.BatchNorm2d: identity,
+            nn.BatchNorm3d: identity,
+            
+            # custom nn.Modules
+            
+            }
+
+def shape(layer, input_shape, *args, **kwargs):
     if type(layer) in shape_map:
-        return shape_map[type(layer)](layer, *args, **kwargs)
+        return shape_map[type(layer)](layer, input_shape, *args, **kwargs)
     elif hasattr(layer, "shape"):
-        return layer.shape(*args, **kwargs)
+        return layer.shape(input_shape, *args, **kwargs)
     else:
         raise ValueError("Failed to compute shape for layer: {0}".format(layer))
