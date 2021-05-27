@@ -12,92 +12,81 @@ __status__ ="Development"
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from ..shape import as_shape
 
+from .embed import OneHotEmbedding
+
 class CategoricalStraightThrough(nn.Module): # Straight through gradients
 
-    def __init__(self, latent_shape, normalise=True, onehot=True, epsilon=0.0):
+    def __init__(self, latent_shape, normalise=False, onehot=True):
         """ Categorical distribution that uses the straight through gradients trick to 
             allow gradients to propagate through the sampling process.
 
-
         Args:
-            latent_shape (tuple, int): shape of latent space, should be 1 dimensional
+            latent_shape (tuple, int): shape of latent space.
             normalise (bool, optional): whether to normalise the logits. Defaults to True.
-            onehot (bool, optional): whether to use a one-hot or a learnable embedding for the samples. Defaults to True.
-            epsilon (float, optional): constant probability value (epsilon/latent_shape) to shape the distribution [0,1]. Defaults to 0.0.
-
+            onehot (bool, optional): whether to use a one-hot embedding or `torch.nn.Embedding`. Defaults to True.
+           
         Returns:
             [torch.tensor]: sample, logits, probs
         """
-
         super().__init__()
         self.latent_shape = latent_shape = as_shape(latent_shape)
+        assert len(latent_shape) == 1
         self.normalise = normalise
-        self.epsilon = max(0, min(epsilon, 1))
-
-        if not onehot:
-            self.embed = nn.Embedding(latent_shape[0], latent_shape[0])
+        if onehot:
+            self.embed = OneHotEmbedding(latent_shape[0])
         else:
-            self.register_buffer("eye", torch.eye(latent_shape[0], latent_shape[0]))
-            def onehot_embed(ind):   
-                return self.eye[ind]
-            self.embed = onehot_embed
-    
+            self.embed = nn.Embedding(latent_shape[0], latent_shape[0]) 
+        
     def forward(self, logits):
+        """ Sample from this categorical distribution. `logits` will be reshaped 
+        to fit the distribution (B,M) -> (B,N,D) -> (B,M) allowing N independent samples to be drawn.
+
+        Args:
+            logits (torch.FloatTensor]): logits.
+
+        Returns:
+            [torch.FloatTensor]: sample(s), logits, probs
+        """
         original_shape = logits.shape
         logits = logits.reshape(-1, self.latent_shape[0])
-        
+
         if self.normalise: 
             logits = logits - logits.logsumexp(dim=-1, keepdim=True) # normalise logits
-            logits = torch.clamp(logits, -10, 0) # logprob -10 is ~ 0 prob, can explode without this
-
+            
         probs = torch.softmax(logits, dim=1) 
 
-        # ??? shape the distribution - this can prevent the distribution from collapsing if the proper regularisation is not in place
-        qprobs = probs - (probs * self.epsilon) + (self.epsilon / self.latent_shape[-1])
-        #qprobs = probs
-
-        sample = torch.multinomial(qprobs, 1, replacement=True)
+        sample = torch.multinomial(probs, 1, replacement=True)
         sample = self.embed(sample).view(probs.shape)
-        return (sample + probs - probs.detach()).view(original_shape), logits, probs # straight-through Hackz
+        ret = sample + probs - probs.detach() # straight-through Hackz
+        return ret.view(original_shape), logits 
 
-class GumbelSoftmax(nn.Module): # TODO document and refactor
 
-    def __init__(self, latent_shape, tau=1.0, hard=False):
+class GumbelSoftmax(nn.Module):
+    """
+        Stochastic layer that uses the Gumbel Softmax. Distributions are taken to 
+        lie in the last dimension of the input tensor, the input shape is preserved.
+    """
+
+    def __init__(self, tau=1.0, hard=False, eps=1e-10, dim=-1):
         super().__init__()
-        self.latent_shape = latent_shape = as_shape(latent_shape)
-        self.hard = hard
         self.tau = tau
+        self.hard = hard
+        self.eps = eps
+        self.dim = dim
     
     def forward(self, logits):
-        # TODO give the option of not onehot
+        logits_ = logits.reshape(-1, logits.shape[-1])
+        z = F.gumbel_softmax(logits_, tau=self.tau, hard=self.hard, eps=self.eps, dim=self.dim)
+        return z.reshape(logits.shape)
 
-        original_shape = logits.shape
-        
-        logits = logits.reshape(-1, self.latent_shape[0])
-        logits = logits - logits.logsumexp(dim=-1, keepdim=True) # normalise logits
-        
-        gumbels = - torch.empty_like(logits).exponential_().log()  # ~Gumbel(0,1)
-        gumbels = (logits + gumbels) / self.tau  # ~Gumbel(logits,tau)
-        y_soft = gumbels.softmax(1)
-        
-        if self.hard: # convert to 1 hot, but allow gradients to flow
-            index = y_soft.max(1, keepdim=True)[1]
-            y_hard = torch.zeros_like(logits).scatter_(1, index, 1.0)
-            ret = y_hard - y_soft.detach() + y_soft
-        else:
-            ret = y_soft
-        
-        # TODO
-
-        return ret.view(original_shape), logits
-
-class DiagonalGuassian(nn.Module):
+class DiagonalGuassian(nn.Module): # TODO refactor a bit
 
     """
-        Diagonal Guassian sampler, $$\mathcal{N}(\mu, \Sigma)$$ uses the reparameterisation trick for differentiability.
+        Diagonal Guassian layer, $$\mathcal{N}(\mu, \Sigma)$$ uses the reparameterisation trick for differentiability.
         Covariance matrix $$\Sigma$$ is a diagonal matrix (provided as a vector) $$[\sigma_1, sigma_2, \cdots, \sigma n] I$$
         for a n-dimensional Guassian distribution. $$\Sigma$$ should be provided in logspace.
     """ 
@@ -155,3 +144,35 @@ class DiagonalGuassian(nn.Module):
         dmu = (mu1 - mu2)
         return ((logvar1 - logvar2 + dmu * ivar2 * dmu + ivar2 * logvar1.exp()).sum(dim=-1) - mu1.shape[-1]) / 2
         
+
+
+"""
+class GumbelSoftmaxDEPRECATED(nn.Module): # TODO document and refactor
+
+    def __init__(self, latent_shape, tau=1.0, hard=False, normalise=False):
+        super().__init__()
+        self.latent_shape = latent_shape = as_shape(latent_shape)
+        self.hard = hard
+        self.tau = tau
+        self.normalise = normalise
+    
+    def forward(self, logits):
+        original_shape = logits.shape
+        logits = logits.reshape(-1, self.latent_shape[0])
+        
+        if self.normalise:
+            logits = logits - logits.logsumexp(dim=-1, keepdim=True) # normalise logits
+            
+        gumbels = - torch.empty_like(logits).exponential_().log()  # ~ Gumbel(0,1)
+        gumbels = (logits + gumbels) / self.tau  # ~ Gumbel(logits, tau)
+        y_soft = gumbels.softmax(1)
+        
+        if self.hard: # convert to 1 hot, but allow gradients to flow
+            index = y_soft.max(1, keepdim=True)[1]
+            y_hard = torch.zeros_like(logits).scatter_(1, index, 1.0)
+            ret = y_hard - y_soft.detach() + y_soft
+        else: # use soft sample
+            ret = y_soft
+
+        return ret.view(original_shape), logits
+"""

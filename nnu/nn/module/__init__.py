@@ -18,9 +18,7 @@ from .. import shape
 from .sample import *
 
 class View(nn.Module):
-    """
-        A view of a tensor. Can be used in a network to reshape output/inputs.
-    """
+    """ Module that creates a view of an input tensor. """
 
     def __init__(self, input_shape, output_shape):
         super(View, self).__init__()
@@ -29,9 +27,7 @@ class View(nn.Module):
             t_y, t_x = np.prod(y), - np.prod(x)
             assert t_y % t_x == 0 # shapes are incompatible...
             x = list(x)
-            
             x[x.index(-1)] = t_y // t_x
-
             return shape.as_shape(x)
 
         self.input_shape = shape.as_shape(input_shape)
@@ -43,7 +39,7 @@ class View(nn.Module):
         if -1 in self.input_shape:
             self.input_shape = infer_shape(self.input_shape, self.output_shape)
 
-    def __call__(self, x):
+    def forward(self, x):
         return x.view(x.shape[0], *self.output_shape)
 
     def __str__(self):
@@ -58,6 +54,12 @@ class View(nn.Module):
 
     def inverse(self, **kwargs):
         return View(self.output_shape, self.input_shape)
+
+class Flatten(View):
+    """ A Module that creates a flat view of a tensor."""
+
+    def __init__(self, input_shape):
+        super().__init__(input_shape, (-1,))
 
 class ResBlock2D(nn.Module):
 
