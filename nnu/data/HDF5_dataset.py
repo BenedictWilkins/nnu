@@ -21,7 +21,6 @@ __email__ = "benrjw@gmail.com"
 __status__ ="Development"
 
 import h5py
-import helpers
 import numpy as np
 from pathlib import Path
 import torch

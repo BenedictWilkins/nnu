@@ -46,7 +46,7 @@ class WalkbackDataset(Dataset):
         if not isinstance(x, Dataset):
             x = TensorDataset(x)
 
-        loader = DataLoader(x, batch_size=batch_size, shuffle=False, pin_memory = True)
+        loader = DataLoader(x, batch_size=batch_size, shuffle=False)
         with torch.no_grad():
             for batch_x, in loader:
                 batch_x = batch_x.to(self.device, non_blocking=True)

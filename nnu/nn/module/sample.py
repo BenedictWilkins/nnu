@@ -86,9 +86,9 @@ class GumbelSoftmax(nn.Module):
 class DiagonalGuassian(nn.Module): # TODO refactor a bit
 
     """
-        Diagonal Guassian layer, $$\mathcal{N}(\mu, \Sigma)$$ uses the reparameterisation trick for differentiability.
-        Covariance matrix $$\Sigma$$ is a diagonal matrix (provided as a vector) $$[\sigma_1, sigma_2, \cdots, \sigma n] I$$
-        for a n-dimensional Guassian distribution. $$\Sigma$$ should be provided in logspace.
+        Diagonal Guassian layer, $$\mathcal{N}(\mu, \Sigma)$$ uses the reparameterisation trick for 
+        differentiability. The diagonal `n x n` covariance matrix $$\Sigma$$ should be provided as a vector $$[\sigma_1, sigma_2, \cdots, \sigma n]$$ 
+        and in log space.
     """ 
 
     def __init__(self, latent_shape):
